@@ -1,0 +1,199 @@
+{% extends "bootstrap/base.html" %}
+{% block title %}Flask-MQTT example{% endblock %}
+
+{% block styles %}
+{{ super() }}
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/socket.io/4.5.0/socket.io.js"></script>
+<script type="text/javascript" src="//code.jquery.com/jquery-2.1.4.min.js"></script>
+<script type="text/javascript" charset="utf-8">
+  $(document).ready(function() {
+    //var socket = io.connect('http://' + document.domain + ':' + location.port);
+	var socket = io.connect()
+
+    $('#publish').click(function(event) {
+      var topic = $('#topic').val();
+      var message = $('#message').val();
+      var qos = $('#qos').val();
+      var data = '{"topic": "' + topic + '", "message": "' + message + '", "qos": ' + qos + '}';
+      socket.emit('publish', data=data);
+    });
+
+    $('#subscribe').click(function(event) {
+      var topic = $('#subscribe_topic').val();
+      var qos = $('#subscribe_qos').val();
+      var data = '{"topic": "' + topic + '", "qos": ' + qos + '}';
+      socket.emit('subscribe', data=data);
+      $('#subscribe').hide();
+      $('#unsubscribe').show();
+      $('#subscribe_topic').prop('readonly', true);
+    });
+
+    $('#unsubscribe').click(function(event) {
+      socket.emit('unsubscribe_all');
+      $('#subscribe').show();
+      $('#unsubscribe').hide();
+      $('#subscribe_topic').prop('readonly', false);
+    });
+
+    socket.on('mqtt_message', function(data) {
+      console.log(data);
+      var text = 'Topic:' + data['topic'] + '(QoS:' + data['qos'] + ') Message:' + data['payload'];
+      var $textarea = $('#subscribe_messages');
+      $textarea.val($textarea.val() + text + '\n');
+    })
+  });
+</script>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+  <div class="row">
+    <div class="col-xs-12">
+      <h1>스마트그늘막 테스트 페이지</h1>
+    </div>
+  </div>
+  <div class="row">
+    <div class="col-xs-6">
+      <div class="panel panel-default">
+        <div class="panel-heading">
+          <h3 class="panel-title">스마트그늘 원격조작(Publish MQTT Message)</h3>
+        </div>
+        <div class="panel-body">
+          <div class="col-xs-12">
+            <div class="row">
+              <div class="form-horizontal">
+                <div class="form-group">
+                  <label class="control-label col-xs-1">Topic: </label>
+                  <div class="col-xs-8">
+                    <input id="topic" class="form-control" value="cmd/device01/remote/folding">
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label class="control-label col-xs-1">Message: </label>
+                  <div class="col-xs-8">
+                    <input id="message" class="form-control" value="#0#">
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label class="control-label col-xs-1">Qos: </label>
+                  <div class="col-xs-8">
+                    <select id="qos" class="form-control">
+                      <option value=0 selected>0</option>
+                      <option value=1>1</option>
+                      <option value=2>2</option>
+                    </select>
+                  </div> 
+                </div>
+                <div class="form-group">
+                  <div class="col-xs-8 col-xs-offset-4">
+                    <button id="publish" class="btn btn-primary">Publish</button>
+                    <br><br>
+                  </div>
+                  <br />
+                  <pre>
+                  < 디바이스코드 예시: device01 >
+
+모든QoS: 1
+
+server -> device (subscribe)
+- Topic: cmd/device01/remote/status
+  => 수신 시, 즉시 status 값 publish 하기
+- Topic: cmd/device01/remote/folding
+  Message: #0#
+  (0: 접힘, 1: 펼침)
+- Topic: cmd/device01/remote/mode
+  Message: #0#
+  (0: 수동, 1: 자동)
+- Topic: cmd/device01/remote/light
+  Message: #0#
+  (0: 꺼짐, 1: 켜짐)
+
+divice -> server (publish)
+- Topic: event/status
+  Message: #device01|0|0|1|7.2|13.3|50|0900|1700|1300#
+  (디바이스코드|모드|상태|조명|풍속|온도|습도|펴는시간|접는시간|디바이스시간)
+  (모드 - 0: 수동, 1: 자동)
+  (상태 - 0: 접힘, 1: 펼침)
+  (조명 - 0: 꺼짐, 1: 켜짐)
+  (풍속 - 7.2m/s // 온도 - 13.3˚C // 습도 - 50%)
+  (펴는시간 - 09:00 // 접는시간 - 17:00)
+  (디바이스 시간 - 13:00)
+
+* 서버로부터 folding, mode 등의 메시지를 수신하면,
+단말기의 설정을 변경한 후 status 값을 즉시 서버로 publish
+                </pre>
+                <br />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-xs-6">
+      <div class="panel panel-default">
+        <div class="panel-heading">
+          <h3 class="panel-title">스마트그늘 현재상태(Subscribe MQTT Messages)</h3>
+        </div>
+        <div class="panel-body">
+          <div class="col-xs-12">
+            <div class="row">
+              <div class="form-horizontal">
+                <div class="form-group">
+                  <label class="control-label col-xs-1">Topic:</label>
+                  <div class="col-xs-8">
+                    <input id="subscribe_topic" class="form-control" value="event/status">
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label class="control-label col-xs-1">Qos: </label>
+                  <div class="col-xs-8">
+                    <select id="subscribe_qos" class="form-control">
+                      <option value=0 selected>0</option>
+                      <option value=1>1</option>
+                      <option value=2>2</option>
+                    </select>
+                  </div> 
+                </div>
+                <div class="form-group">
+                  <div class="col-xs-8 col-xs-offset-4">
+                    <button id="subscribe" class="btn btn-primary">Subscribe</button>
+                    <button id="unsubscribe" class="btn btn-default" style="display: none;" >Unsubscribe</button>
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label class="control-label col-xs-1">Messages:</label>
+                  <div class="col-xs-8">
+                    <textarea id="subscribe_messages" class="form-control" rows=10></textarea>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel panel-default">
+        <div class="panel-heading">
+          <h3 class="panel-title">로그 확인</h3>
+        </div>
+		<div class="panel-body">
+	      <button id="frontend_mqtt_log" class="btn btn-primary" onclick="window.open('/test/frontend_mqtt_log')">frontend-mqtt.log</button>
+	      <button id="frontend_test_mqtt_log" class="btn btn-primary" onclick="window.open('/test/frontend_test_mqtt_log')">frontend_test-mqtt.log</button>
+	      <button id="backend_log" class="btn btn-primary" onclick="window.open('/test/backend_log')">backend.log</button>			
+		  <p><br/></p>
+		  <label class="control-label">- frontend-mqtt.log:</label> 완성된 페이지에서 <u>버튼</u>을 통해 전송된 MQTT의 로그입니다.<br/>
+		  <label class="control-label">- frontend_test-mqtt.log:</label> 테스트 페이지를 통해 전송된 MQTT의 로그입니다.<br/>
+		  <label class="control-label">- backend.log:</label> 서버가 디바이스로부터 수신한 MQTT의 로그입니다.<br/>
+		</div>	
+	  </div>
+
+    
+	</div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,320 @@
+{% extends "base.html" %}
+{% block title %}SmartTec & SoftVerse{% endblock %}
+{% block scripts %}
+{{ super() }}
+<script src="./js/bootstrap.bundle.min.js"></script>
+
+{% endblock %}
+
+{% block content %}
+
+<header class="navbar navbar-dark sticky-top bg-dark flex-md-nowrap p-0 shadow">
+  <a class="navbar-brand col-md-3 col-lg-2 me-0 px-3 fs-6" onclick="location.href='main'">Smarttec</a>
+  <button class="navbar-toggler position-absolute d-md-none collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#sidebarMenu" aria-controls="sidebarMenu" aria-expanded="false" aria-label="Toggle navigation">
+    <span class="navbar-toggler-icon"></span>
+  </button>
+
+</header>
+{% for message in messages %}
+<div class="alert alert-{{ message.category }} alert-dismissible fade show text-start" role="alert">
+  <strong>{{ message.message }}</strong>
+  <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+</div>
+{% endfor %}
+<div class="container-fluid">
+  <div class="row">
+    <nav id="sidebarMenu" class="col-md-3 col-lg-2 d-md-block bg-light sidebar collapse">
+      <div class="list-group position-sticky pt-3 sidebar-sticky">
+        <a onclick="location.href='settingpage'" class="list-group-item list-group-item-action active ">디바이스 검색</a>
+        <a onclick="location.href='devicemodify'" class="list-group-item list-group-item-action">디바이스 수정 및 추가</a>
+        <a onclick="location.href='usercontrol'" class="list-group-item list-group-item-action" aria-current="true">회원관리</a>
+      </div>
+    </nav>
+
+    <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
+      <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+        <h1 class="h2">디바이스 검색</h1>
+        <div class="btn-toolbar mb-2 mb-md-0"></div>
+        <form class="d-flex align-items-center">
+          <input id="searchInput" class="form-control me-2" type="search" placeholder="이름이나 코드로 검색" aria-label="Search">
+          <button id="searchButton" class="btn btn-outline-primary me-2 text-nowrap" type="button">검색</button>
+          <button id="resetButton" class="btn btn-outline-secondary text-nowrap" type="button">초기화</button>
+        </form>
+      </div>
+
+      <div class="table-responsive">
+        <table class="table table-striped table-sm">
+          <thead>
+          <tr>
+            <th> </th>
+            <th scope="col">코드</th>
+            <th scope="col">이름</th>
+            <th scope="col">조명</th>
+            <th scope="col">풍속</th>
+            <th scope="col">온도</th>
+            <th scope="col">습도</th>
+            <th scope="col">상태</th>
+          </tr>
+          </thead>
+          <tbody style="vertical-align: baseline;">
+          {% for device_object in device_object_list %}
+          <tr>
+            <td>
+              <button class="btn btn-primary text-nowrap assignment-button" type="button" data-bs-toggle="modal" data-bs-target="#detailModal">할당</button>
+              <button class="btn btn-danger text-nowrap unassignment-button" type="button" data-bs-toggle="modal" data-bs-target="#unassignmentModal">해제</button>
+            </td>
+            <td>{{ device_object['device_info']['device_code'] }}</td>
+            <td>{{ device_object['device_info']['device_name'] }}</td>
+            <td>{{ '켜짐' if device_object['light'] else '꺼짐' }}</td>
+            <td>{{ device_object['speed'] }}m/s</td>
+            <td>{{ device_object['temperature'] }}˚C</td>
+            <td>{{ device_object['humidity'] }}%</td>
+            <td>{{ '펼침' if device_object['status'] else '접힘' }}</td>
+          </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </main>
+  </div>
+</div>
+
+<!-- Unassignment Modal -->
+<div class="modal fade" id="unassignmentModal" tabindex="-1" aria-labelledby="unassignmentModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="unassignmentModalLabel">디바이스 할당 해제</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form action="/settingpage/unassign" method="post" id="deviceUnassignmentForm">
+        <div class="modal-body">
+          <div><b>할당된 유저 목록</b></div>
+          <select id="assignedUserSelect" name="selected_users" class="form-select">
+          </select>
+        </div>
+        <input type="hidden" id="deviceCodeInput2" name="deviceCode2" value="">
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">닫기</button>
+          <button type="button" class="btn btn-primary" onclick="unassignDevice()">해제</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+<!-- Detail Modal -->
+<div class="modal fade" id="detailModal" tabindex="-1" aria-labelledby="detailModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="detailModalLabel">디바이스 할당</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form action="/settingpage/mapping" method="post" id="deviceMappingForm">
+        <div class="modal-body">
+          <h5><b>할당된 유저 목록</b></h5>
+          <ul id="userList">
+            {% for device_object in device_object_list %}
+            {% for user in user_list %}
+            {% if device_object['device_info']['device_code'] == user['device_code'] %}
+            {% if user.users == '할당된 유저가 없습니다.' %}
+            <li class="list-group-item d-none" data-device-code="{{ device_object['device_info']['device_code'] }}">{{ user.users }}</li>
+            {% else %}
+            <li class="list-group-item d-none" data-device-code="{{ device_object['device_info']['device_code'] }}">{{ user.users|join(', ') }}</li>
+            {% endif %}
+            {% endif %}
+            {% endfor %}
+            {% endfor %}
+          </ul>
+
+          <hr>
+
+          <h5><b>전체 유저 목록</b></h5>
+          <select id="userSelect" name="selected_users" class="form-select">
+            {% for user in get_all_user %}
+            <option value="{{ user.id }}">{{ user.id }}</option>
+            {% endfor %}
+          </select>
+
+          <input type="hidden" id="deviceCodeInput" name="deviceCode1" value="">
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">닫기</button>
+          <button type="button" class="btn btn-primary" onclick="saveSelection()">저장</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+
+
+<script>
+  // 검색 버튼 클릭 시
+  document.getElementById('searchButton').addEventListener('click', function() {
+    searchDevices();
+  });
+
+  // 초기화 버튼 클릭 시
+  document.getElementById('resetButton').addEventListener('click', function() {
+    resetSearch();
+  });
+
+  // 검색 기능 구현
+  function searchDevices() {
+    var input = document.getElementById('searchInput').value.toLowerCase(); // 입력된 검색어
+    var rows = document.querySelectorAll('tbody tr'); // 목록의 각 행
+
+    for (var i = 0; i < rows.length; i++) {
+      var deviceCode = rows[i].getElementsByTagName('td')[1].textContent.toLowerCase(); // 디바이스 코드
+      var deviceName = rows[i].getElementsByTagName('td')[2].textContent.toLowerCase(); // 디바이스 이름
+
+      // 검색어와 디바이스 코드 또는 이름 비교
+      if (deviceCode.includes(input) || deviceName.includes(input)) {
+        rows[i].style.display = ''; // 일치하는 경우 행 표시
+      } else {
+        rows[i].style.display = 'none'; // 일치하지 않는 경우 행 숨김
+      }
+    }
+  }
+
+  // 초기화 기능 구현
+  function resetSearch() {
+    document.getElementById('searchInput').value = ''; // 검색어 입력 칸 비우기
+    searchDevices(); // 모든 행 표시
+  }
+
+  // Wait for the document to load
+  document.addEventListener('DOMContentLoaded', function() {
+    const assignmentButtons = document.getElementsByClassName('assignment-button');
+    for (const button of assignmentButtons) {
+      button.addEventListener('click', function() {
+        const userListItems = document.querySelectorAll('#userList li');
+        for (let i = 0; i < userListItems.length; i++) {
+          userListItems[i].classList.add('d-none');
+        }
+
+        const deviceCode = this.parentElement.nextElementSibling.textContent;
+        const userListItem = document.querySelector(`#userList li[data-device-code="${deviceCode}"]`);
+        if (userListItem) {
+          userListItem.classList.remove('d-none');
+        }
+        document.getElementById('deviceCodeInput').value = deviceCode;
+        document.getElementById('deviceCodeInput2').value = deviceCode;
+      });
+    }
+  });
+
+  // 모달이 열릴 때 체크박스 초기화 및 할당된 사용자 목록 업데이트
+  $('#detailModal').on('show.bs.modal', function(event) {
+    const button = event.relatedTarget;
+    const userListItems = document.querySelectorAll('#userList li');
+
+    for (let i = 0; i < userListItems.length; i++) {
+      userListItems[i].classList.add('d-none');
+    }
+
+    const deviceCode = button.parentElement.nextElementSibling.textContent;
+    const userListItem = document.querySelector(`#userList li[data-device-code="${deviceCode}"]`);
+    if (userListItem) {
+      userListItem.classList.remove('d-none');
+    }
+
+    document.getElementById('deviceCodeInput').value = deviceCode;
+  });
+
+  // 사용자 선택을 저장하는 함수
+function saveSelection() {
+  const deviceCode = document.getElementById('deviceCodeInput').value;
+  const selectedUsers = Array.from(document.getElementById('userSelect').options)
+    .filter(option => option.selected)
+    .map(option => option.value);
+
+  const userListItem = document.querySelector(`#userList li[data-device-code="${deviceCode}"]`);
+  const selectedUserList = userListItem.textContent.trim().split(', '); // 선택된 유저들을 콤마로 분리하여 배열에 저장
+
+  const selectedUsersLowercase = selectedUsers.map(user => user.toLowerCase());
+
+  // 선택된 유저들 중 어느 하나라도 이미 할당된 유저에 포함되어 있다면 할당을 막음
+  if (selectedUsersLowercase.some(user => selectedUserList.includes(user))) {
+    alert('이미 할당된 유저입니다.');
+    return;
+  }
+  const selectedUsersInput = document.createElement('input');
+  selectedUsersInput.type = 'hidden';
+  selectedUsersInput.name = 'selected_users';
+  selectedUsersInput.value = selectedUsers.join(',');
+  document.getElementById('deviceMappingForm').appendChild(selectedUsersInput);
+
+  document.getElementById('deviceMappingForm').submit();
+  alert('저장되었습니다.');
+}
+
+  // 모달이 열릴 때 선택 목록 업데이트
+  $('#unassignmentModal').on('show.bs.modal', function(event) {
+    const button = event.relatedTarget;
+    const deviceCode = button.parentElement.nextElementSibling.textContent;
+    updateUnassignmentModal(deviceCode); // 선택 목록 업데이트
+  });
+
+  // 선택 목록 업데이트
+  function updateUnassignmentModal(deviceCode) {
+    const assignedUserSelect = document.getElementById('assignedUserSelect');
+    assignedUserSelect.innerHTML = '';
+
+    const userListItem = document.querySelector(`#userList li[data-device-code="${deviceCode}"]`);
+    if (userListItem) {
+      const users = userListItem.textContent.split(',');
+      for (const user of users) {
+        const option = document.createElement('option');
+        option.value = user;
+        option.textContent = user;
+        assignedUserSelect.appendChild(option);
+      }
+    }
+  }
+  // unassignDevice 함수
+function unassignDevice() {
+    const deviceCode = document.getElementById('deviceCodeInput2').value;
+    const selectedUsers = Array.from(document.getElementById('assignedUserSelect').options)
+      .filter(option => option.selected)
+      .map(option => option.value);
+    const selectedUsersInput = document.createElement('input');
+    selectedUsersInput.type = 'hidden';
+    selectedUsersInput.name = 'selected_users';
+    selectedUsersInput.value = selectedUsers.join(',');
+    document.getElementById('deviceUnassignmentForm').appendChild(selectedUsersInput);
+
+    document.getElementById('deviceUnassignmentForm').submit();
+    alert('해제되었습니다.');
+  }
+
+
+  // updateUnassignmentModal 함수
+  function updateUnassignmentModal(deviceCode) {
+    const assignedUserSelect = document.getElementById('assignedUserSelect');
+    assignedUserSelect.innerHTML = '';
+
+    const userListItem = document.querySelector(`#userList li[data-device-code="${deviceCode}"]`);
+    if (userListItem) {
+      const users = userListItem.textContent.split(', ');
+      for (const user of users) {
+        const option = document.createElement('option');
+        option.value = user;
+        option.textContent = user;
+        assignedUserSelect.appendChild(option);
+      }
+    }
+  }
+
+  // 모달이 열릴 때 updateUnassignmentModal 함수 호출
+  $('#unassignmentModal').on('show.bs.modal', function(event) {
+    const button = event.relatedTarget;
+    const deviceCode = button.parentElement.nextElementSibling.textContent;
+    updateUnassignmentModal(deviceCode);
+    document.getElementById('deviceCodeInput2').value = deviceCode;
+  });
+</script>
+
+{% endblock %}

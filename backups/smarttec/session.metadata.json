@@ -1,0 +1,1 @@
+{"options":{},"indexes":[{"v":2,"key":{"_id":1},"name":"_id_","ns":"smarttec.session"},{"v":2,"unique":true,"key":{"token":1},"name":"token_1","ns":"smarttec.session","background":false,"sparse":false}],"uuid":"542e78db04264d4dac421afffafef57e"}

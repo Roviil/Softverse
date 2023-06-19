@@ -1,0 +1,1 @@
+{"options":{},"indexes":[{"v":2,"key":{"_id":1},"name":"_id_","ns":"smarttec.device_info"},{"v":2,"unique":true,"key":{"device_code":1},"name":"device_code_1","ns":"smarttec.device_info","background":false,"sparse":false}],"uuid":"3dc1f140b1f24269bca2d40ae254a8a9"}

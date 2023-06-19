@@ -1,0 +1,3 @@
+Backup: mongodump --out /home/ubuntu --db smarttec
+
+Restore: mongorestore --host 127.0.0.1 --port 27017 --db smarttec /home/hades/workspace/smarttec/backups/smarttec -u admin --authenticationDatabase=admin

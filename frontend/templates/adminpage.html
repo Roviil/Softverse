@@ -1,0 +1,440 @@
+{% extends "base.html" %}
+{% block title %}SmartTec & SoftVerse{% endblock %}
+{% block scripts %}
+{{ super() }}
+<script>
+  var ws = new WebSocket(`ws://${document.domain}:${location.port}/api/websocket`);
+  ws.onmessage = function(event) {
+    data = JSON.parse(event.data)
+    for (var device of data) {
+      // Set Status
+      if (device.status==0) {
+        set_folding(device.device_code)
+      }else if (device.status==1) {
+        set_unfolding(device.device_code)
+      }
+      // Set Mode
+      if (device.mode==0) {
+        set_manual_mode(device.device_code)
+      }else if (device.mode==1) {
+        set_auto_mode(device.device_code)
+      }
+      set_form(device)
+      set_infomation(device)
+    }
+  };
+  setInterval(function() {
+    if (ws.readyState == 3) {
+      location.reload();
+    }
+  }, 1000);
+
+  function sendMessage(event) {
+    if (event.valueOf()['srcElement']['type'] == "checkbox") {
+      var msg = {
+        cmd : event.valueOf()['srcElement']['name'],
+        device_code : event.valueOf()['srcElement'].value,
+        message: event.valueOf()['srcElement'].checked
+      };
+    }else if(event.valueOf()['srcElement']['id'] == "refresh") {
+      var msg = {
+        cmd : event.valueOf()['srcElement']['id'],
+        device_code : event.valueOf()['srcElement'].value,
+      };
+    }
+    console.log(msg);
+
+    ws.send(JSON.stringify(msg))
+    if (event.valueOf()['srcElement']['type'] == "button") {
+      event.preventDefault()
+      event.valueOf()['srcElement'].getElementsByTagName('span')[0].classList.toggle('visually-hidden')
+      setTimeout(() => event.valueOf()['srcElement'].getElementsByTagName('span')[0].classList.toggle('visually-hidden'), 5000);
+    }else {
+      show_spinner()
+    }
+  }
+  function set_folding(name) {
+    var img = document.getElementsByName(name)[0].getElementsByTagName('img')[0]
+    img.className = "shade-folding"
+  }
+  function set_unfolding(name) {
+    var img = document.getElementsByName(name)[0].getElementsByTagName('img')[0]
+    img.className = "shade-unfolding"
+  }
+  function set_auto_mode(name) {
+    var img = document.getElementsByName(name)[0].getElementsByTagName('h5')[0]
+    img.className = "auto-mode"
+  }
+  function set_manual_mode(name) {
+    var img = document.getElementsByName(name)[0].getElementsByTagName('h5')[0]
+    img.className = "manual-mode"
+  }
+  function set_form(device) {
+    var form_data = document.getElementsByName(device.device_code)[1]
+    form_data['mode'].value = device.mode
+    form_data['status'].value = device.status
+    form_data['light'].value = device.light
+    form_data['speed'].value = device.speed.toFixed(1)
+    form_data['temperature'].value = device.temperature.toFixed(1)
+    form_data['humidity'].value = device.humidity
+    form_data['timer_unfold'].value = device.timer_unfold
+    form_data['timer_fold'].value = device.timer_fold
+    form_data['device_time'].value = device.device_time
+    form_data['datetime'].value = device.datetime
+  }
+  function set_infomation(device) {
+    var h7_data = document.getElementsByName(device.device_code)[2].getElementsByTagName('h7')
+    h7_data['light'].textContent = (device.light == 0) ? "꺼짐" : "켜짐";
+    h7_data['speed'].textContent = device.speed.toFixed(1) + "m/s"
+    h7_data['temperature'].textContent = device.temperature.toFixed(1) + "˚C"
+    h7_data['humidity'].textContent = device.humidity + "%"
+    h7_data['device_time'].textContent = device.device_time
+
+  }
+
+  function set_modal(detailModal, form_data) {
+    var device_code = form_data['name']
+    var device_name = form_data['device_name'].value
+    var mode = form_data['mode'].value
+    var status = form_data['status'].value
+    var light = form_data['light'].value
+    var speed = form_data['speed'].value
+    var temperature = form_data['temperature'].value
+    var humidity = form_data['humidity'].value
+    var timer_unfold = form_data['timer_unfold'].value
+    var timer_fold = form_data['timer_fold'].value
+    var device_time = form_data['device_time'].value
+    var datetime = form_data['datetime'].value
+
+    // Update the modal's content.
+    var modalTitle = detailModal.querySelector('.modal-title')
+    modalTable = detailModal.querySelector('.modal-table').getElementsByTagName('td')
+    modalTable[0].textContent = device_name
+    modalTable[1].textContent = device_code
+    modalTable[2].textContent = (mode == 0) ? "수동" : "자동";
+    modalTable[3].textContent = (status == 0) ? "접힘" : "펼침";
+    modalTable[4].textContent = (light == 0) ? "꺼짐" : "켜짐";
+    modalTable[5].textContent = speed + "m/s"
+    modalTable[6].textContent = temperature + "˚C"
+    modalTable[7].textContent = humidity + "%"
+    modalTable[8].textContent = timer_unfold
+    modalTable[9].textContent = timer_fold
+    modalTable[10].textContent = device_time
+    modalTable[11].textContent = datetime
+
+    modalTitle.textContent = 'Device: ' + device_name
+
+    input_mode = detailModal.getElementsByClassName('form-check-input')[0]
+    input_mode.value = device_code
+    input_mode.checked = (mode == 0) ? false : true;
+    input_folding = detailModal.getElementsByClassName('form-check-input')[1]
+    input_folding.value = device_code
+    input_folding.checked = (status == 0) ? false : true;
+    input_light = detailModal.getElementsByClassName('form-check-input')[2]
+    input_light.value = device_code
+    input_light.checked = (light == 0) ? false : true;
+    icon_refresh = detailModal.getElementsByTagName('i')[0]
+    //icon_refresh.value = device_code
+  }
+  function sleep(ms) {
+    return new Promise((r) => setTimeout(r, ms));
+  }
+  function show_spinner() {
+    let spinner = document.getElementById('spinner');
+    spinner.classList.toggle('visually-hidden')
+    setTimeout(() => spinner.classList.toggle('visually-hidden'), 5000);
+    event.preventDefault();
+    //spinner.style.visibility = 'visible';
+    //sleep(3000)
+    //.then(() => spinner.style.visibility = 'hidden');
+  }
+
+  var detailModal = document.getElementById('detailModal')
+  var cursor_model;
+  detailModal.addEventListener('show.bs.modal', function (event) {
+    // Button that triggered the modal
+    var icon = event.relatedTarget
+    // Extract info from data-bs-* attributes
+    var device_code = icon.getAttribute('data-bs-device_code')
+    var form_data = document.getElementsByTagName("form")[device_code]
+
+    set_modal(detailModal, form_data)
+    cursor_model = setInterval(function() {
+      var form_data = document.getElementsByTagName("form")[device_code]
+      set_modal(detailModal, form_data)
+    }, 1000);
+  })
+  detailModal.addEventListener('hide.bs.modal', function (event) {
+    clearInterval(cursor_model);
+  })
+  function updatePassword() {
+    const currentPassword = document.getElementById('currentPassword').value;
+    const newPassword = document.getElementById('newPassword').value;
+    const confirmPassword = document.getElementById('confirmPassword').value;
+
+    // Add your password update logic here
+    // You can use an AJAX request to send the form data to the server for processing
+
+    // Example validation: Check if the new password and confirm password match
+    if (newPassword !== confirmPassword) {
+      document.getElementById('passwordError').textContent = '새 비밀번호와 확인 비밀번호가 일치하지 않습니다.';
+      return;
+    }
+
+    // Clear the error message if there was one
+    document.getElementById('passwordError').textContent = '';
+
+    // Perform other password update operations as needed
+
+    // Close the modal
+    const passwordModal = new bootstrap.Modal(document.getElementById('passwordModal'));
+    passwordModal.hide();
+  }
+  function resetForm() {
+    document.getElementById('uploadForm').reset();
+  }
+
+  // 모달 창이 열릴 때 이벤트 리스너를 추가하여 폼 초기화 함수를 호출
+  document.getElementById('uploadModal').addEventListener('show.bs.modal', function () {
+    resetForm();
+  });
+  function goToIndex() {
+    window.location.href = "/dashboard/index.html";
+  }
+
+</script>
+{% endblock %}
+
+{% block content %}
+<div class="container-sm mt-2">
+  <div class="alert alert-danger alert-dismissible fade show text-start me-2" role="alert" style="font-size: 0.85em;">
+    <i class="bi bi-exclamation-triangle-fill fs-6"></i>
+    <strong>경고!</strong>&ensp; 어드민 페이지 입니다
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+  </div>
+  <div class="container-fluid pb-3 mt-2 px-2">
+    <p class="text-end">
+      <button type="button" class="btn btn-light btn-sm px-1" onclick="location.href='settingpage'">관리자 페이지</button>
+      <button type="button" class="btn btn-light btn-sm px-1" name="all_unfolding" onclick="sendMessage(event)" style="font-size: 0.85em">
+        <span class="spinner-border spinner-border-sm visually-hidden" role="status" aria-hidden="true"></span> 일괄펴기</button>
+      <button type="button" class="btn btn-light btn-sm px-1" name="all_folding" onclick="sendMessage(event)" style="font-size: 0.85em">
+        <span class="spinner-border spinner-border-sm visually-hidden" role="status" aria-hidden="true"></span> 일괄접기</button>
+      <button type="button" class="btn btn-light btn-sm px-1" name="all_auto" onclick="sendMessage(event)" style="font-size: 0.85em">
+        <span class="spinner-border spinner-border-sm visually-hidden" role="status" aria-hidden="true"></span> 일괄자동</button>
+      <button type="button" class="btn btn-light btn-sm px-1" name="all_manual" onclick="sendMessage(event)" style="font-size: 0.85em">
+        <span class="spinner-border spinner-border-sm visually-hidden" role="status" aria-hidden="true"></span> 일괄수동</button>
+      <button type="button" class="btn btn-light btn-sm px-1" onclick="location.href='logout'" style="font-size: 0.85em">로그아웃</button>
+      <button type="button" class="btn btn-light btn-sm px-1" data-bs-toggle="modal" data-bs-target="#passwordModal">
+        비밀번호 수정
+      </button>
+
+
+
+    </p>
+  </div>
+
+  <!-- justify-content-center -->
+  <div class="container-fluid px-0 row row-cols-lg-5 g-lg-4">
+    {% for device_object in device_object_list %}
+    <div class="col col-auto col-sm-5 col-lg-4 col-xl-3 mb-1 mt-1" name="{{ device_object['device_code'] }}">
+      <div class="row ms-0 border border-info border-opacity-25">
+        <div class="img_div col ms-10 mt-1 p-0">
+          {% if device_object['status'] %}
+          <img class="shade-unfolding" data-bs-device_code="{{ device_object['device_code'] }}" data-bs-toggle="modal" data-bs-target="#detailModal">
+          {% else %}
+          <img class="shade-folding" data-bs-device_code="{{ device_object['device_code'] }}" data-bs-toggle="modal" data-bs-target="#detailModal">
+          {% endif %}
+          {% if device_object['mode'] %}
+          <h5 class="auto-mode"></h5>
+          {% else %}
+          <h5 class="manual-mode"></h5>
+          {% endif %}
+          <form name="{{ device_object['device_code'] }}">
+            <input type="hidden" name="device_name" value="{{ device_object['device_info']['device_name'] }}">
+            <input type="hidden" name="mode" value="{{ device_object['mode'] }}">
+            <input type="hidden" name="status" value="{{ device_object['status'] }}">
+            <input type="hidden" name="light" value="{{ device_object['light'] }}">
+            <input type="hidden" name="speed" value="{{ device_object['speed'] | float }}">
+            <input type="hidden" name="temperature" value="{{ device_object['temperature'] | float }}">
+            <input type="hidden" name="humidity" value="{{ device_object['humidity'] }}">
+            <input type="hidden" name="timer_unfold" value="{{ device_object['timer_unfold'] }}">
+            <input type="hidden" name="timer_fold" value="{{ device_object['timer_fold'] }}">
+            <input type="hidden" name="device_time" value="{{ device_object['device_time'] }}">
+            <input type="hidden" name="datetime" value="{{ device_object['datetime'] }}">
+          </form>
+        </div>
+        <div class="img_div col col-auto px-1" name="{{ device_object['device_code'] }}">
+          <p class="text-start mb-0" style="font-size: 0.85em"><b>조명:</b> <h7 name="light">{{ '켜짐' if device_object['light'] else '꺼짐' }}</h7></p>
+          <p class="text-start mb-0" style="font-size: 0.85em"><b>풍속:</b> <h7 name="speed">{{ device_object['speed'] }}m/s</h7></p>
+          <p class="text-start mb-0" style="font-size: 0.85em"><b>온도:</b> <h7 name="temperature">{{ device_object['temperature'] }}˚C</h7></p>
+          <p class="text-start mb-0" style="font-size: 0.85em"><b>습도:</b> <h7 name="humidity">{{ device_object['humidity'] }}%</h7></p>
+          <p class="text-start mb-0" style="font-size: 0.85em"><b>시간:</b> <h7 name="device_time">{{ device_object['device_time'] }}</h7></p>
+        </div>
+      </div>
+      <div class="row ms-0 border border-top-0 border-info border-opacity-25"><p class="text-center mb-0">{{ device_object['device_info']['device_name'] }}</p></div>
+    </div>
+    {% endfor %}
+  </div>
+
+</div>
+
+<!-- Password Update Modal -->
+<div class="modal fade" id="passwordModal" tabindex="-1" aria-labelledby="passwordModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="passwordModalLabel">비밀번호 수정</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form id="passwordForm" action="/update/password" method="post">
+          <div class="mb-3">
+            <label for="currentPassword" class="form-label">현재 비밀번호</label>
+            <input type="password" class="form-control" id="currentPassword" name="currentPassword" required>
+          </div>
+          <div class="mb-3">
+            <label for="newPassword" class="form-label">새 비밀번호</label>
+            <input type="password" class="form-control" id="newPassword" name="newPassword" required>
+          </div>
+          <div class="mb-3">
+            <label for="confirmPassword" class="form-label">새 비밀번호 확인</label>
+            <input type="password" class="form-control" id="confirmPassword" name="confirmPassword" required>
+          </div>
+          <div id="passwordError" class="text-danger"></div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+            <button type="submit" class="btn btn-primary" onclick="updatePassword()">저장</button>
+          </div>
+        </form>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="uploadModal" tabindex="-1" aria-labelledby="uploadModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="uploadModalLabel">디바이스 추가</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form id="uploadForm" method="POST" action="/upload" enctype="multipart/form-data">
+          <input type="file" name="file" id="file" accept=".xlsx, .xls"><br/><br/>
+          <input type="submit" class="btn btn-primary" value="업로드">
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="detailModal" tabindex="-1" aria-labelledby="detailModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title h4" id="detailModalLgLabel"></h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="table-responsive">
+          <table class="table table-striped modal-table">
+            <tr>
+              <th>이름</th>
+              <td></td>
+            </tr>
+            <tr>
+              <th>코드</th>
+              <td></td>
+            </tr>
+            <tr>
+              <th>모드</th>
+              <td></td>
+            </tr>
+            <tr>
+              <th>상태</th>
+              <td></td>
+            </tr>
+            <tr>
+              <th>조명</th>
+              <td></td>
+            </tr>
+            <tr>
+              <th>풍속</th>
+              <td></td>
+            </tr>
+            <tr>
+              <th>온도</th>
+              <td></td>
+            </tr>
+            <tr>
+              <th>습도</th>
+              <td></td>
+            </tr>
+            <tr>
+              <th>펴는시간</th>
+              <td></td>
+            </tr>
+            <tr>
+              <th>접는시간</th>
+              <td></td>
+            </tr>
+            <tr>
+              <th>장비현재시간</th>
+              <td></td>
+            </tr>
+            <tr>
+              <th>업데이트일시</th>
+              <td></td>
+            </tr>
+          </table>
+
+          <div class="d-flex justify-content-center pt-0 mt-0">
+            <div class="spinner spinner-border text-primary visually-hidden" id="spinner" role="status" style="width: 4rem; height: 4rem; position: fixed; margin-top: -0.7rem !important;"></div>
+          </div>
+
+          <div class="container">
+            <div class="row my-2 bt-1">
+              <div class="col fw-bold">모드</div>
+              <div class="col fw-bold">상태</div>
+            </div>
+            <div class="row d-flex align-items-center">
+              <div class="col text-end pe-1" style="font-size: 0.8em">수동</div>
+              <div class="col form-check form-switch ps-0 pe-0 d-flex justify-content-center">
+                <input class="form-check-input ms-0 ps-0 pe-0" type="checkbox" id="modal_input_mode" name="mode" onclick="sendMessage(event)" style="height:3em; width:5em;" value="">
+              </div>
+              <div class="col text-start ps-1" style="font-size: 0.8em">자동</div>
+              <div class="col text-end pe-1" style="font-size: 0.8em">접힘</div>
+              <div class="col form-check form-switch ps-0 pe-0 d-flex justify-content-center">
+                <input class="form-check-input ms-0 ps-0 pe-0" type="checkbox" id="modal_input_folding" name="folding" onclick="sendMessage(event)" style="height:3em; width:5em;" value="">
+              </div>
+              <div class="col text-start ps-1" style="font-size: 0.8em">펼침</div>
+            </div>
+          </div>
+
+          <div class="container mt-4">
+            <div class="row my-2 bt-1">
+              <div class="col fw-bold">조명</div>
+              <div class="col fw-bold"><!--새로고침--></div>
+            </div>
+            <div class="row d-flex align-items-center">
+              <div class="col text-end pe-1" style="font-size: 0.8em">꺼짐</div>
+              <div class="col form-check form-switch ps-0 pe-0 d-flex justify-content-center">
+                <input class="form-check-input ms-0 ps-0 pe-0" type="checkbox" id="modal_input_mode" name="light" onclick="sendMessage(event)" style="height:3em; width:5em;" value="">
+              </div>
+              <div class="col text-start ps-1" style="font-size: 0.8em">켜짐</div>
+              <div class="col text-end pe-1" style="font-size: 0.8em"></div>
+              <div class="col form-check form-switch ps-0 pe-0 d-flex justify-content-center">
+                <!--<input class="form-check-input ms-0 ps-0 pe-0" type="checkbox" id="modal_input_folding" name="refresh" onclick="sendMessage(event)" style="height:3em; width:5em; visibility: hidden;" value="">-->
+                <!--<i class="bi bi-arrow-clockwise fs-1" id="refresh" onclick="1sendMessage(event)"></i>-->
+              </div>
+              <div class="col text-start ps-1" style="font-size: 0.8em"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

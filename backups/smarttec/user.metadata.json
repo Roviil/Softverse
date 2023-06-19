@@ -1,0 +1,1 @@
+{"options":{},"indexes":[{"v":2,"key":{"_id":1},"name":"_id_","ns":"smarttec.user"},{"v":2,"unique":true,"key":{"username":1},"name":"username_1","ns":"smarttec.user","background":false,"sparse":false}],"uuid":"f840e966ac9648da9810c0c4405e1120"}
